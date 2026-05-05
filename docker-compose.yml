@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  # ─── MongoDB ────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: taskflow-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: team-task-manager
+    networks:
+      - taskflow-net
+
+  # ─── Backend ────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskflow-backend
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      PORT: 5000
+      MONGO_URI: mongodb://mongo:27017/team-task-manager
+      JWT_SECRET: taskflow_docker_secret_change_in_production
+      JWT_EXPIRE: 7d
+      NODE_ENV: production
+      CLIENT_URL: http://localhost:3000
+    depends_on:
+      - mongo
+    networks:
+      - taskflow-net
+
+  # ─── Frontend ───────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: taskflow-frontend
+    restart: unless-stopped
+    ports:
+      - '3000:80'
+    depends_on:
+      - backend
+    networks:
+      - taskflow-net
+
+volumes:
+  mongo_data:
+
+networks:
+  taskflow-net:
+    driver: bridge
